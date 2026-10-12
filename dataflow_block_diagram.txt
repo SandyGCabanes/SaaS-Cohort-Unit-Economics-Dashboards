@@ -21,6 +21,8 @@
                          [ dbt Layer 2: Marts ]
                          (Metric & Analytics Tables)
                                     |
+                         [ Object Storage Bucket ]
+                                    |
            +------------------------+------------------------+
            |                                                 |
            v                                                 v
