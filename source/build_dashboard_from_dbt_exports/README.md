@@ -77,7 +77,7 @@ graph TD
 Five files feed the Revenue tab. Four feed the Customers tab. The monthly metrics file and the cohort file feed both.
 
 ```mermaid
-graph TD
+graph LR
     monthly[("monthly_metrics_long.csv")]
     arr[("arr_by_month.csv")]
     movements[("mrr_movements_long.csv")]
