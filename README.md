@@ -11,12 +11,12 @@ My deliverables are:
 	- [2024-2025](https://sandygcabanes.github.io/SaaS-Cohort-Unit-Economics-Dashboards/)
 	 
 
-In this repo, the operating data are simulated.  Since SaaS data are usually confidential, this is a deliberate **proxy for a real-world scenario.**
+In this repo, the operating data are [simulated](source/dataset_generation).  Since SaaS data are usually confidential, this is a deliberate **proxy for a real-world scenario.**
 
 In short, this project is a full end-to-end system, with **two-simulation paths:**
 
 - **Downstream:** [data generation (ground truth)](source/dataset_generation) -> [validation](source/validation) -> [visualization](docs/index.html). The monthly patterns, builds and constants for the data-generating process are explicitly defined to represent the behavior of a SaaS business with three channels and three plan tiers.
-- **Upstream:**  [data generation (ground truth)](source/dataset_generation) -> [disaggregation](source/disaggregation) -> [dbt from raw csv](https://github.com/SandyGCabanes/SaaS-Cohort-Unit-Economics-Dashboards/tree/main/dbt_from_raw_csv) -> dbt to export deconstruction. The generated **ground truth** customer and cost data are further disaggregated into simulated third-party source-system extracts to resemble data that requires processing through the dbt pipeline.
+- **Upstream:**  [data generation (ground truth)](source/dataset_generation) -> [disaggregation](source/disaggregation) -> [dbt from raw csv](https://github.com/SandyGCabanes/SaaS-Cohort-Unit-Economics-Dashboards/tree/main/dbt_from_raw_csv) -> [dbt to export](https://github.com/SandyGCabanes/SaaS-Cohort-Unit-Economics-Dashboards/tree/main/dbt_to_exports/saas_dbt). The previously generated ***ground truth customer and cost data*** are further disaggregated into simulated third-party source-system extracts (CSVs) to resemble files that require processing through the dbt pipeline.
 
 Please see the [overall_project_diagram.txt](https://github.com/SandyGCabanes/SaaS-Cohort-Unit-Economics-DBT-to-Dashboards/blob/main/overall_project_diagram.txt) for this project.  
 
@@ -183,10 +183,10 @@ These can be evaluated separately by a **Financial Analyst.**
 
 > **A note on the data.** This dashboard runs on a business simulation dataset built for demonstration purposes, to represent real transactions. This summary shows how a Data Analyst would evaluate VC funding readiness using this KPI set. The conclusion is a simulated recommendation before pitching to investors. 
 
-> ### Limitations of the disaggregation code simulation
+> ### Deliberate design choices and limitations of the [disaggregation simulation code](source/disaggregation)
 
-> - Stripe customers carry a `source_customer_id` that links to the marketing files. Real 3rd-party exports need an advanced production pipeline that would match customers on email, click IDs, or UTM data.  This column is the proxy for that process.
-> - Every customer has a channel. This was a deliberate choice. Real data has an "Unknown" or "Direct" bucket.
+> - **Stripe** customers carry a `source_customer_id` that links to the **marketing** files. Real 3rd-party exports need an ***advanced production pipeline*** or ***identity resolution pipeline*** that would match customers on email, click IDs, or UTM data.  This column is the proxy for that process. 
+> - Every customer has a channel. Real data has an "Unknown" or "Direct" bucket.
 > - CAC by plan tier is an allocation. 
 > - Disaggregated data are smoother than real data. Channel splits are assumed.
-
+> - These were all deliberate design choices to limit "scope creep".
