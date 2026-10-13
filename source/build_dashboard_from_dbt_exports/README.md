@@ -105,7 +105,7 @@ graph LR
     class revenue,customers target
 ```
 
-Three more files sit in the export folder and are not read. `arr_movements_long.csv` is the MRR movements times 12. `kpi_summary.csv` is the monthly metrics plus last month's value. `unit_economics_grid.csv` is the by-cohort unit economics added up over all cohorts.
+Three more files located in the export folder and are not read. `arr_movements_long.csv` is the MRR movements times 12. `kpi_summary.csv` is the monthly metrics plus last month's value. `unit_economics_grid.csv` is the by-cohort unit economics added up over all cohorts.
 
 [Back to top](#lineage-of-the-dashboard-charts)
 
