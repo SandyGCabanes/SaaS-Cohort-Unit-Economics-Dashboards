@@ -23,7 +23,7 @@
             │                                                                                                              
             ▼                                                                                                              
 ┌───────────────────────┐     ┌───────────────────────┐    ┌───────────────────────┐                                       
-│ dbt 1: from raw csv,  │     │Manual upload to cloud │    │ dbt 2: (in progress)  │                                 
+│ dbt 1: from raw csv,  │     │Manual upload to cloud │    │ dbt 2: to exports     │                                 
 │  creates GROUND-TRUTH │────►│  storage, simulated   │───►│export kpis and metrics│                                    
 │      PANEL files      │     │ bucket (local folder) │    │  for new dashboards   │                                 
 │staging reconstruction │     │  ideally automated    │    │    separate folder    │                                     
