@@ -1,7 +1,9 @@
-# Where each dashboard table comes from (dbt_to_exports v5a)
+# Lineage of dashboard tables produced by the dbt model 
+**(dbt_to_exports v5a)**
 
-**There are six lineage diagrams for each exported csv or parquet file from dbt_to_exports models.  Final tables are the blue boxes in the lineage diagrams, exported as csv file in the pill boxes.**
+This documents the lineage of each of the csv exports produced by the dbt_to_exports model in this section.  The **csv exports** and parallel parquet exports serve as common sources for future analysts who will continue to update the metrics once recent data are loaded in the ***landing_zone.***
 
+There are **six lineage diagrams** for each exported csv file from the dbt_to_exports models.  Final tables are the blue boxes, while grey pill boxes represent the exported csv files.
 
 [Net revenue retention (`nrr_long`)](#net-revenue-retention-nrr-long)
 
@@ -15,7 +17,7 @@
 
 [Monthly metrics and KPI cards (`monthly_metrics_long`, `arr_by_month`, `kpi_summary`)](#6-monthly-metrics-and-kpi-cards-monthly_metrics_long-arr_by_month-kpi_summary)
 
-**Legends in this lineage diagram**. 
+**Legend**. 
 - Grey disc: a file.
 - Dark grey box: table or view
 - Purple: one of the four wide customer-by-month tables, stored once as real tables.
@@ -24,9 +26,9 @@
 - Grey pill at the bottom: the csv file exported
 - The words on an arrow are the metrics, kpis or segments for that branch.
 
-**Two terms**
+**Prefix definitions**
 - `stg_` models are staging. They are a clean copy of a source file and with rename and cast columns as transformations.
-- `int_` models are intermediate building blocks. Dashboards do not read them.
+- `int_` models are intermediate building blocks. Dashboards do not read them. Refer to the csv_exports directory or the parquet_exports directory for the dashboard-usable files.
 
 ---
 
