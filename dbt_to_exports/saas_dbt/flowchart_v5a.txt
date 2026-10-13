@@ -1,0 +1,53 @@
+# dbt_to_exports flowchart (v5a), text-only
+
+```
+fct_revenue, fct_cost   (source tables in saas_reporting.duckdb)
+            |
+            v
++-----------------------------+
+| models/staging/              |
+| stg_revenue, stg_cost        |   casts only, no logic
++-----------------------------+
+            |
+            v
++-----------------------------+
+| models/intermediate/         |
+| spine, retention base,       |   plumbing only. Views, except four large
+| NRR base, unit-economics,    |   customer-by-month tables (movements and
+| 24-month customer CLV,       |   audit, MRR and ARR), which are stored as
+| monthly counts, ARPU, churn, |   real tables. Nothing downstream of dbt
+| customer-level movements     |   queries these directly.
++-----------------------------+
+            |
+            v
++----------------------------------------------------------------+
+| models/marts/                                                  |
+|                                                                |
+|   unit_economics_grid.sql   <- shared, sits at marts/ root     |
+|                                                                |
+|   +--------------------------------------------------------+   |
+|   | marts/reporting/                                       |   |
+|   | 9 long-form tables                                     |   |
+|   | schema: reporting_marts                                |   |
+|   +--------------------------------------------------------+   |
++----------------------------------------------------------------+
+            |
+            v
+   csv_exports/ and parquet_exports/  (reporting/ plus the shared table)
+            |
+            v
+   HTML dashboards, Tableau / Excel, Python reporting engine
+   (all read the same long-form tables;
+    data_provider.py checks the contract, then renders
+    KPI cards / charts / tables)
+
+CLV and LTV figures cover lifetime months 0 to 23 only (24-month CLV).
+
+Separately, off to the side:
+
+saas_validation_v5d.ipynb (notebook)
+      |
+      v
+Independent check: does a `dbt run` against the same
+CSV batch produce the same numbers the notebook does?
+```

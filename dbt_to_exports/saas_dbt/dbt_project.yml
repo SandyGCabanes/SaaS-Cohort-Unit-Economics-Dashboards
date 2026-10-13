@@ -1,1 +1,46 @@
+name: 'saas_analytics'
+version: '1.0.0'
+config-version: 2
 
+profile: 'saas_analytics'
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+on-run-start:
+  - "{{ check_landing_zone() }}"
+on-run-end:
+  - "{{ export_marts_after_build(results) }}"
+
+vars:
+  # Folder that stands in for the cloud storage bucket. Override at run time:
+  #   dbt run --vars '{landing_zone: actual/path/to/folder}'
+  landing_zone: landing_zone
+  # CLV is measured over the first N lifetime months (lifetime_month 0 to N-1).
+  # Keep in sync with CLV_HORIZON_MONTHS in the generator and saas_kpi_engine.py.
+  clv_horizon_months: 24
+
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  saas_analytics:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+      # The four customer-by-month tables are large and several models read
+      # them, so they are stored once as real tables instead of views.
+      customer_level_movements_mrr:
+        +materialized: table
+      customer_level_movements_arr:
+        +materialized: table
+      reindexed_panel_audit_mrr:
+        +materialized: table
+      reindexed_panel_audit_arr:
+        +materialized: table
+    marts:
+      +materialized: table
+      +schema: marts
+      reporting:
+        +schema: reporting_marts
