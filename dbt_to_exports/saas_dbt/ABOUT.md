@@ -1,15 +1,21 @@
 # SaaS Reporting Analytics dbt Project
 
 ## Problem
-The Analyst created a Python notebook that analyzes SaaS subscription data. 
+The dashboard was successfully delivered to the client, complete with
+business-actionable recommendations. The analysis was done using a 
+Python notebook that loaded staging data from the dbt_from_raw models. 
 This was a precursor before building the actual dashboard.
-The notebook reads two CSV files: a revenue export and a cost export. 
-These two are previous staging outputs from dbt_from_raw model, and stored
-in an accessible folder.  The notebook calculates standard SaaS metrics 
-such as MRR, churn, retention, and customer lifetime value.
+The notebook read two CSV files: a revenue export (`customer_month_panel`) 
+and a cost export (`cost_per_customer`), stored in an accessible folder.  
+The notebook calculated standard SaaS metrics such as MRR, churn, retention, 
+and customer lifetime value.
 
-The notebook requires reshaping csv files in order to build html plotly dashboards 
-or use BI tools like Tableau, or even excel pivot tables.
+But the notebook requires reshaping csv files in order to build html plotly 
+dashboards or use BI tools like Tableau, or even excel pivot tables.
+**Intermediate dataframes** are created upon running, and even **stored as helper_dfs.** 
+This is fine for a one-off project, but not advisable for handoff. 
+There needs to be a common source for all analysts in the future, so that 
+definitions are consistent across.
 
 ## Solution
 This project rebuilds the notebook's re-shaping logic as a dbt project. Now this dbt 
@@ -26,13 +32,14 @@ reporting engine, HTML dashboards, Tableau and Excel can all read the same
 tables, with minimal reshaping.
 
 ## Benefits
-- One database `saas_reporting.duckdb` file holds every metric. No more scattered CSVs.
+- One database `saas_reporting.duckdb` file holds every metric. No more scattered
+  helper_dfs exported as CSVs.
 - Every table has automated tests. Bad data gets caught early.
 - Refreshing data does not require rebuilding anything. One command
   refreshes every table.
 - One consumer-ready layer exists. No manual reshaping is needed for
   Tableau, Excel, HTML dashboards or a Python reporting engine.
-- The notebook remains available as an independent check on the pipeline's
+- The old notebook can still be used an independent check on the pipeline's
   output.
 
 ## How It Works
@@ -54,7 +61,12 @@ before it.
    layer, outside that folder, because it is an aggregate data check.
 
 ### Main strategy for the build
-Like the earlier back-calculation step in python, which built one wide table once and then sliced it into the simulated Stripe and marketing extracts, this project builds a few wide customer-by-month tables once and reuses them everywhere. There are four of them (the zero-filled audit tables and the movements tables, each for MRR and ARR), and instead of being sliced into raw-looking extracts they are rolled up into the reporting marts.
+Like the earlier back-calculation step in python, which built one wide table once 
+and then sliced it into the simulated Stripe and marketing extracts, this project 
+builds a few wide customer-by-month tables once and reuses them everywhere. 
+There are four of them (the zero-filled audit tables and the movements tables, 
+each for MRR and ARR), and instead of being sliced into raw-looking extracts 
+they are rolled up into the reporting marts.
 
 
 ### Why use DuckDB instead of SQLite
