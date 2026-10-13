@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: stg_revenue
+    columns:
+      - name: customer_id
+        tests: [not_null]
+      - name: calendar_month
+        tests: [not_null]
+      - name: cohort_month
+        tests: [not_null]
+      - name: mrr
+        tests: [not_null]
+      - name: is_active
+        tests: [not_null]
+
+  - name: stg_cost
+    columns:
+      - name: cohort_month
+        tests: [not_null]
+      - name: channel
+        tests: [not_null]
+      - name: plan_tier
+        tests: [not_null]
+      - name: new_customers
+        tests: [not_null]

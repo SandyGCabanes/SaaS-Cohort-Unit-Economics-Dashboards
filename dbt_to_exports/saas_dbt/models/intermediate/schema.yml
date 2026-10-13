@@ -1,0 +1,56 @@
+version: 2
+
+# Tests for the customer-by-month plumbing models that the reporting marts read.
+# These used to live in marts/tableau/schema.yml.
+models:
+  - name: churn_rate_by_month
+    columns:
+      - name: calendar_month
+        tests: [not_null, unique]
+
+  - name: arpu_by_month
+    columns:
+      - name: calendar_month
+        tests: [not_null, unique]
+
+  - name: customer_counts_by_month
+    columns:
+      - name: calendar_month
+        tests: [not_null, unique]
+
+  - name: revenue_churn_rate_by_month
+    columns:
+      - name: calendar_month
+        tests: [not_null, unique]
+
+  - name: customer_level_movements_mrr
+    columns:
+      - name: customer_id
+        tests: [not_null]
+      - name: movement_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['New Business', 'Expansion', 'Contraction', 'Churn', 'No Change']
+
+  - name: customer_level_movements_arr
+    columns:
+      - name: customer_id
+        tests: [not_null]
+      - name: movement_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['New Business', 'Expansion', 'Contraction', 'Churn', 'No Change']
+
+  - name: reindexed_panel_audit_mrr
+    columns:
+      - name: mrr
+        tests: [not_null]
+
+  - name: reindexed_panel_audit_arr
+    columns:
+      - name: arr_run_rate
+        tests: [not_null]

@@ -1,0 +1,89 @@
+version: 3
+
+models:
+  - name: cohort_metrics_long
+    columns:
+      - name: segment_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['all', 'channel', 'plan_tier']
+      - name: metric_name
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['active_customers', 'retention_rate', 'mrr_total', 'avg_mrr', 'cumulative_ltv', 'ltv_cac_ratio', 'mrr_retention_rate']
+
+  - name: monthly_metrics_long
+    columns:
+      - name: calendar_month
+        tests: [not_null]
+      - name: metric_name
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['total_mrr', 'arpu', 'active_customers', 'new_customers', 'churned_customers', 'logo_churn_rate_pct', 'revenue_churn_rate_pct']
+
+  - name: nrr_long
+    columns:
+      - name: segment_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['all', 'channel', 'plan_tier']
+
+  - name: mrr_movements_long
+    columns:
+      - name: movement_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['New Business', 'Expansion', 'Contraction', 'Churn', 'No Change']
+
+  - name: arr_movements_long
+    columns:
+      - name: movement_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['New Business', 'Expansion', 'Contraction', 'Churn', 'No Change']
+
+  - name: kpi_summary
+    columns:
+      - name: metric_name
+        tests: [not_null]
+      - name: period
+        tests: [not_null]
+
+  - name: cac_per_customer_by_channel
+    description: >
+      Customer-weighted CAC per cohort month and channel (all plan tiers
+      together). Total acquisition spend divided by total new customers.
+    columns:
+      - name: cohort_month
+        tests: [not_null]
+      - name: channel
+        tests: [not_null]
+      - name: cohort_cac
+        tests: [not_null]
+
+  - name: unit_economics_by_cohort
+    description: >
+      24-month CLV, CAC and customer count per cohort, channel and plan tier.
+      Mature cohorts only. Rolled up over all cohorts, it equals unit_economics_grid.
+    columns:
+      - name: cohort_month
+        tests: [not_null]
+      - name: channel
+        tests: [not_null]
+      - name: plan_tier
+        tests: [not_null]
+      - name: mature_customers
+        tests: [not_null]
+      - name: ltv_24m
+        tests: [not_null]
+      - name: average_cac
+        tests: [not_null]

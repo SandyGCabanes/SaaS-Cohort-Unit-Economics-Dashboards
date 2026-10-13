@@ -1,0 +1,7 @@
+version: 2
+
+models:
+  # Shared by both consumers — already tidy, used as-is. Left at models/marts/
+  # root (not in reporting/) since its location is the signal
+  # that it is shared, rather than a dual tag.
+  - name: unit_economics_grid

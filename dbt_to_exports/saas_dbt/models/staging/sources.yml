@@ -1,0 +1,43 @@
+version: 2
+
+sources:
+  - name: saas_data
+    database: saas_reporting   # must match the file name in profiles.yml, without .duckdb
+    schema: main
+    tables:
+      - name: fct_revenue
+        meta:
+          external_location: "read_csv('{{ var('landing_zone') }}/customer_month_panel.csv', header=true, all_varchar=true)"
+        description: >
+          Customer-month panel. One row per customer per active calendar
+          month (churned months are absent, not zero-filled). Read directly from
+          customer_month_panel.csv in the landing zone folder.
+        columns:
+          - name: customer_id
+          - name: channel
+          - name: plan_tier
+          - name: cohort_year
+          - name: cohort_month
+          - name: calendar_month
+          - name: lifetime_month
+          - name: is_active
+          - name: mrr
+          - name: customer_clv_24m
+          - name: customer_cac
+          - name: unit_clv_cac_ratio_24m
+          - name: is_mature_24m
+      - name: fct_cost
+        meta:
+          external_location: "read_csv('{{ var('landing_zone') }}/cost_per_customer.csv', header=true, all_varchar=true)"
+        description: >
+          Cohort x channel x plan_tier acquisition cost table. Read directly from
+          cost_per_customer.csv in the landing zone folder.
+        columns:
+          - name: cohort_year
+          - name: cohort_month
+          - name: channel
+          - name: plan_tier
+          - name: new_customers
+          - name: segment_mix_share_percentage
+          - name: cac_per_customer_dollars
+          - name: total_acquisition_cost_dollars
