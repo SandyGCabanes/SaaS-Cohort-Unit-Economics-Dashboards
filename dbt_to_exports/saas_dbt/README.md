@@ -1,242 +1,260 @@
-# SaaS Reporting Analytics dbt Project
+# Where each dashboard table comes from (dbt_to_exports v5a)
 
-## Problem
-The Analyst created a Python notebook that analyzes SaaS subscription data. 
-This was a precursor before building the actual dashboard.
-The notebook reads two CSV files: a revenue export and a cost export. 
-These two are previous staging outputs from dbt_from_raw model, and stored
-in an accessible folder.  The notebook calculates standard SaaS metrics 
-such as MRR, churn, retention, and customer lifetime value.
-
-The notebook requires reshaping csv files in order to build html plotly dashboards 
-or use BI tools like Tableau, or even excel pivot tables.
-
-## Solution
-This project rebuilds the notebook's re-shaping logic as a dbt project. Now this dbt 
-can turn raw database tables into clean, tested, documented tables using
-SQL. Two CSV files feed the project: `customer_month_panel.csv` and
-`cost_per_customer.csv`. dbt reads them from the landing zone folder and
-names them `fct_revenue` and `fct_cost`. The project produces a full set of SaaS
-metrics tables in a single database file `saas_reporting.duckdb`. It also
-exports CSVs for pickup by reporting BI tools, or even excel.
-
-This dbt project produces one set of output tables, in long form. One row holds
-one value, and a `metric_name` column says which metric it is. The Python
-reporting engine, HTML dashboards, Tableau and Excel can all read the same
-tables, with minimal reshaping.
-
-## Benefits
-- One database `saas_reporting.duckdb` file holds every metric. No more scattered CSVs.
-- Every table has automated tests. Bad data gets caught early.
-- Refreshing data does not require rebuilding anything. One command
-  refreshes every table.
-- One consumer-ready layer exists. No manual reshaping is needed for
-  Tableau, Excel, HTML dashboards or a Python reporting engine.
-- The notebook remains available as an independent check on the pipeline's
-  output.
-
-## How It Works
-
-### Project structure
-The project has three layers of models. Each layer builds on the one
-before it.
-
-1. Staging. This layer reads the two source tables, `fct_revenue` and
-   `fct_cost`. It only renames and casts columns. It adds no business
-   logic.
-2. Intermediate. This layer builds shared building blocks. Examples
-   include a customer-by-month grid, a retention base table, and the large
-   customer-by-month movement tables. These models are not meant to be
-   queried directly by any dashboard or report.
-3. Marts. This is the final layer. Every table a dashboard or report
-   should query lives here. The `reporting` folder holds the long-form
-   tables. One shared table, `unit_economics_grid`, sits at the top of the
-   layer, outside that folder, because it is an aggregate data check.
-
-### Why use DuckDB instead of SQLite
-DuckDB runs window functions and large cross-joins faster than SQLite.
-Several models in this project depend on both.
-
-DuckDB also has a built-in command called PIVOT. SQLite has
-no equivalent command, and building the same grid there would require dbt
-to generate a fixed list of columns in advance. That approach breaks the
-moment a new column should appear.
-
-If the source system writes to SQLite instead of DuckDB, DuckDB can still
-read that SQLite file directly. It can then write all output tables to a
-separate DuckDB file. This project does not implement that setup, but it is
-straightforward to add later.
-
-### How to refresh data
-
-1. Place the newest `customer_month_panel.csv` and `cost_per_customer.csv`
-   in the landing zone folder. This folder simulates the cloud storage
-   bucket. Each new file fully replaces the old one. 
-2. The staging layer reads the two CSV files directly. Every downstream
-   table is then rebuilt in the correct order.
-3. The Parquet files and the CSV files are written automatically at the end of a
-   full `dbt build`. They go to the `parquet_exports` and `csv_exports` folders in the
-   project. If any step fails, or the build covers only some models, both exports
-   are skipped and the log says why. 
-4. To write one set on its own, run `dbt run-operation export_marts_to_parquet` 
-   or `dbt run-operation export_marts_to_csv`.
-   The root files `export_marts_to_parquet.sql` and `export_marts_to_csv.sql` do the
-   same job from the DuckDB command line, outside dbt.
-
-### Input files and 24-month CLV
-The panel file should have these columns:
-
-| File | Columns |
-|---|---|
-| `customer_month_panel.csv` | `customer_id, channel, plan_tier, cohort_year, cohort_month, calendar_month, lifetime_month, is_active, mrr, customer_clv_24m, customer_cac, unit_clv_cac_ratio_24m, is_mature_24m` |
-| `cost_per_customer.csv` | `cohort_year, cohort_month, channel, plan_tier, new_customers, segment_mix_share_percentage, cac_per_customer_dollars, total_acquisition_cost_dollars` |
-
-`customer_clv_24m` is the customer's MRR added up over lifetime months 0 to
-23. It repeats on every row of that customer. The uncapped older columns
-`customer_clv` and `unit_clv_to_cac_ratio` are gone.
-
-`is_mature_24m` is true when a cohort has been observed for the full 24
-months. When the data ends in 2028-12, the last mature cohort is 2027-01.
-Unit economics count mature customers only. Each customer counts once.
-This way every customer in the average has had the same 24 months to earn
-revenue.
-
-Where the 24-month limit shows up:
-
-| Table | What it holds now |
-|---|---|
-| `unit_economics_grid` | `clv_24m`, `average_cac` and `clv_to_cac_ratio` per channel and plan tier, mature customers only. `mature_customers` shows how many customers each row uses. |
-| `cohort_metrics_long` | The `cumulative_ltv` and `ltv_cac_ratio` rows stop at period 23. The last period is the 24-month figure. |
-| `reindexed_panel_audit_mrr` and `_arr` | Intermediate tables in the database only. They carry `customer_clv_24m`, `unit_clv_cac_ratio_24m` and `is_mature_24m` on every row. |
-
-Two notes:
-
-- The limit for the month-by-month tables is the dbt variable
-  `clv_horizon_months` in `dbt_project.yml`. It is set to 24. The 24-month
-  figures inside the panel file are consistent.
-- A cohort that has no rows in `cost_per_customer.csv` drops out of
-  the `ltv_cac_ratio` rows in `cohort_metrics_long`, because its CAC is
-  unknown.
-
-### Materialization
-Four large tables in this project are stored as real tables, not views.
-They are `customer_level_movements_mrr`, `customer_level_movements_arr`,
-`reindexed_panel_audit_mrr` and `reindexed_panel_audit_arr`. They live in
-`models/intermediate/`. Each one has a row for every customer in every
-month. On the full data, a CSV export of each one ran from about 520 MB to
-680 MB, so they stay in the database and are not exported to CSV or
-Parquet. Building them requires a cross-join and a window function. That
-calculation is expensive. 
-
-Three reporting tables read from them (`mrr_movements_long`, 
-`arr_movements_long` and `monthly_metrics_long`).
-Storing them as views could incur repeated compute cost.
-
-Every other model in the intermediate layer stays a view. 
-
-## Appendix
-
-### Mart, shape, and what it feeds
-The reporting-engine tables all follow a consistent shape. This lets one
-chart component work for many different metrics, just by pointing it at a
-different `metric_name` value.
-
-| Mart | Shape | Feeds |
-|---|---|---|
-| `cohort_metrics_long` | `segment_type, segment_value, cohort_month, period, metric_name, metric_value` | Retention heatmap and cohort line charts. Filter by `metric_name`: `retention_rate`, `mrr_total`, `avg_mrr`, `cumulative_ltv`, `ltv_cac_ratio`, `mrr_retention_rate`, `active_customers`. `cumulative_ltv` and `ltv_cac_ratio` stop at period 23 (24-month CLV). |
-| `monthly_metrics_long` | `segment_type, segment_value, calendar_month, metric_name, metric_value` | Monthly trend line and bar charts. |
-| `nrr_long` | `segment_type, segment_value, calendar_month, nrr_percentage` | Net revenue retention trend, blended or segmented. |
-| `mrr_movements_long` and `arr_movements_long` | `calendar_month, movement_type, delta_value` | Stacked-bar or waterfall movement charts. |
-| `arr_by_month` | `calendar_month, total_mrr, arr_value` | Annual run-rate line chart. `arr_value` is `total_mrr` times 12. |
-| `kpi_summary` | `segment_type, segment_value, metric_name, period, current_value, previous_value, pct_change` | KPI cards. `pct_change` is already calculated. |
-| `unit_economics_grid` | `channel, plan_tier, mature_customers, clv_24m, average_cac, clv_to_cac_ratio` | Already in a usable shape. Used as-is. 24-month CLV over mature cohorts only. |
-| `cac_per_customer_by_channel` (v5a) | `cohort_month, channel, cohort_cac` | CAC-by-channel chart. Total spend divided by total new customers, all plan tiers together. Also gives blended CAC per cohort when weighted by cohort size. |
-| `unit_economics_by_cohort` (v5a) | `cohort_month, channel, plan_tier, mature_customers, ltv_24m, average_cac` | The unit economics grid with `cohort_month` kept. Lets a dashboard rebuild the grid for any window of cohorts. Weight each row by `mature_customers`. Mature cohorts only. |
+**There are six lineage diagrams for each exported csv or parquet file from dbt_to_exports models.  Final tables are the blue boxes in the lineage diagrams, exported as csv file in the pill boxes.**
 
 
-**Test only**
-- `dbt test --select path:models/marts/reporting` runs just the tests for the reporting marts. There are 9 reporting marts, and 8 of them have tests. `arr_by_month` has none yet.
+[Net revenue retention (`nrr_long`)](#net-revenue-retention-nrr-long)
 
-**Build and test together**
-- `dbt build --select path:models/marts/reporting` runs the models then tests them right after, in dependency order. This is usually the better choice, since a failed test on one model stops it from feeding a broken result downstream in the same run.
+[Cohort retention (`cohort_metrics_long`, part 1 of 2)](#2-cohort-retention-cohort_metrics_long-part-1-of-2)
 
-### In - progress ---- html dashboard builder to be updated
-### Files for an HTML dashboard builder (v5a)
-`build_dashboard_from_marts.py` reads only the files in
-`csv_exports/reporting`. After a full `dbt build`, that folder holds 9 CSV
-files. The script needs these 5 to draw the dashboard:
-`monthly_metrics_long`, `nrr_long`, `mrr_movements_long`,
-`cohort_metrics_long` and `cac_per_customer_by_channel`.
+[Cohort LTV and LTV:CAC (`cohort_metrics_long`, part 2 of 2)](#3-cohort-ltv-and-ltvcac-cohort_metrics_long-part-2-of-2)
 
-Two more are optional. `unit_economics_by_cohort` fills the channel by plan
-tier table in the Unit Economics card for each timeframe. `arr_movements_long`
-and `kpi_summary` are used only to cross-check the others.
+[Unit economics and CAC (three tables)](#4-unit-economics-and-cac-three-tables)
 
-`arr_by_month` and `unit_economics_grid` are exported too, but the script
-does not read them. It works out ARR as total MRR times 12.
+[MRR and ARR movements (`mrr_movements_long`, `arr_movements_long`)](#5-mrr-and-arr-movements-mrr_movements_long-arr_movements_long)
 
-### Deviations from the notebook
-Some tables differ from what the notebook (`saas_validation_v9_2`) produced.
-These differences are intentional.
+[Monthly metrics and KPI cards (`monthly_metrics_long`, `arr_by_month`, `kpi_summary`)](#6-monthly-metrics-and-kpi-cards-monthly_metrics_long-arr_by_month-kpi_summary)
 
-- Retention by channel and by plan tier. In the notebook, a loop builds one
-  retention grid per channel or per plan tier. But the loop overwrites its
-  own result each time. Only the last channel's grid was ever saved to the
-  notebook's CSV. This project fixes that. Every channel and every plan
-  tier is included in `cohort_metrics_long`, as the `segment_type` and
-  `segment_value` columns.
-- `unit_economics_grid`. CLV and CAC are built differently from the
-  notebook's CLV:CAC section.
-  - The notebook builds CLV one month of life at a time. For each month of
-    life, it uses every cohort that has reached that month. A young cohort
-    counts only for the months it has lived. Its CAC is total spend divided
-    by all customers acquired, young cohorts included.
-  - This project follows `saas_kpi_engine.py`. It keeps mature customers
-    only, meaning cohorts observed for the full 24 months. It averages each
-    customer's 24-month CLV. CAC is the average CAC of those same
-    customers. Each customer counts once.
-  - Both methods are valid. On the full files, the ratios agree within
-    0.4% for every channel and plan tier. The notebook rounds to 2
-    decimals, which explains most of the difference. This project keeps
-    full precision. Formatting belongs in the BI tool or report.
-  - The notebook's CLV:CAC by channel alone can be rebuilt from this table.
-    Weight each row by `mature_customers`. The oldest-cohort-only version
-    has no table here.
-- LTV table of the oldest cohort. The notebook builds this table over the
-  cohort's whole observed history. This project has no table for it. The
-  same figures come from `cohort_metrics_long` for the oldest cohort. The
-  first 24 months use the same arithmetic. Later months are not produced,
-  because `cumulative_ltv` stops at lifetime month 23.
-- Notebook-only sections. These have no dbt counterpart: the data integrity checks, the price parity check, and the
-  analysis of what stopping a channel would cost, including months to earn
-  back CAC. CAC over time by channel was in this list until v5a. It now
-  comes from `cac_per_customer_by_channel`.
+**Legends in this lineage diagram**. 
+- Grey disc: a file.
+- Dark grey box: table or view
+- Purple: one of the four wide customer-by-month tables, stored once as real tables.
+- Green: new in v5a vs. v5 dbt_to_exports model
+- Blue: the table explained in the section
+- Grey pill at the bottom: the csv file exported
+- The words on an arrow are the metrics, kpis or segments for that branch.
 
-### Setup
-1. Use the `profiles.yml` that ships in the project folder. Or copy it to
-   `~/.dbt/profiles.yml`. Or set the `DBT_PROFILES_DIR` environment
-   variable to point at it. Whichever you pick, set the `path` value to the location of `saas_reporting.duckdb`.
-   This database holds the source tables and every model built from them, up to
-   the marts. The first dbt layer keeps its own database, saas_analytics.db, so
-   the two files do not get mixed up. DuckDB names a database after its file, so
-   the name in `models/staging/sources.yml` (`database:`) has to match this file name.
-2. Install dbt and the DuckDB adapter: `pip install dbt-core dbt-duckdb`.
-3. Run `dbt build`.
+**Two terms**
+- `stg_` models are staging. They are a clean copy of a source file and with rename and cast columns as transformations.
+- `int_` models are intermediate building blocks. Dashboards do not read them.
 
-Version v5 was tested end to end, against 100-customer sample files that
-match the 24-month schema of both CSV files. All 33 models built and all 37
-automated tests passed. Version v5a adds 2 models and 10 tests, so a full
-build should now show 35 models and 47 tests. The v5a additions have not
-been run in dbt yet. Their SQL was checked outside dbt on small made-up
-tables, and their output columns were checked against
-`build_dashboard_from_marts.py`. Run `dbt build` once on the sample files,
-then on the full files, before relying on the numbers.
+---
 
-### Change history
-See the `docs/` folder for a record of what changed at each step, and how
-to reverse each change if needed. Files are named
-`edits_v1_to_v2.txt`, `edits_v2_to_v3.txt`, and so on.
-`edits_clv_24m.txt` covers the move to 24-month CLV.
-`edits_v4_to_v5.txt` covers the removal of the Tableau folder.
-`edits_v5_to_v5a.txt` covers the two new reporting marts, the new test, and
-the export lines for both.
+## 1. Net revenue retention (`nrr_long`)
+
+Three versions of the same calculation (all customers, by channel, by plan tier) are appended or concatenated into one table.
+
+```mermaid
+graph TD
+    panel[("customer_month_panel.csv")]
+    stg_revenue["Clean copy of the panel<br/>stg_revenue"]
+    int_nrr_base["NRR, all customers<br/>int_nrr_base"]
+    int_nrr_by_channel["NRR by channel<br/>int_nrr_by_channel"]
+    int_nrr_by_plan_tier["NRR by plan tier<br/>int_nrr_by_plan_tier"]
+    nrr_long["Net revenue retention by month<br/>nrr_long"]
+    csv(["csv_exports/reporting/<br/>nrr_long.csv"])
+
+    panel --> stg_revenue
+    stg_revenue --> int_nrr_base
+    stg_revenue --> int_nrr_by_channel
+    stg_revenue --> int_nrr_by_plan_tier
+    int_nrr_base -->|"all"| nrr_long
+    int_nrr_by_channel -->|"channel"| nrr_long
+    int_nrr_by_plan_tier -->|"plan_tier"| nrr_long
+    nrr_long --> csv
+
+    classDef file fill:#777777,stroke:#888888,color:#000000
+    classDef target fill:#1F4E79,stroke:#2471a3,stroke-width:2px,color:#ffffff
+    class panel,csv file
+    class nrr_long target
+```
+[Back to top](#where-each-dashboard-table-comes-from-dbt_to_exports-v5a)
+
+---
+
+## 2. Cohort retention (`cohort_metrics_long`, part 1 of 2)
+
+Customer retention and MRR retention, by cohort and months since signup. Part 2 covers the LTV rows of the same table.
+
+```mermaid
+graph TD
+    panel[("customer_month_panel.csv")]
+    stg_revenue["Clean copy of the panel<br/>stg_revenue"]
+    int_retention_base["Customers still active,<br> by cohort and month<br/>int_retention_base"]
+    int_retention_percentage["Retention % by cohort<br> and month<br/>int_retention_percentage"]
+    int_mrr_retention_percentage["MRR retention % by cohort<br> and month<br/>int_mrr_retention_percentage"]
+    cohort_metrics_long["Cohort table (long form)<br/>cohort_metrics_long"]
+    csv(["csv_exports/reporting/<br/>cohort_metrics_long.csv"])
+
+    panel --> stg_revenue
+    stg_revenue --> int_retention_base
+    int_retention_base --> int_retention_percentage
+    stg_revenue --> int_mrr_retention_percentage
+    int_retention_base -->|"active_customers"| cohort_metrics_long
+    int_retention_percentage -->|"retention_rate"| cohort_metrics_long
+    int_mrr_retention_percentage -->|"mrr_retention_rate"| cohort_metrics_long
+    stg_revenue -->|"mrr_total"| cohort_metrics_long
+    cohort_metrics_long --> csv
+
+    classDef file fill:#777777,stroke:#888888,color:#000000
+    classDef target fill:#1F4E79,stroke:#2471a3,stroke-width:2px,color:#ffffff
+    class panel,csv file
+    class cohort_metrics_long target
+```
+[Back to top](#where-each-dashboard-table-comes-from-dbt_to_exports-v5a)
+
+---
+
+## 3. Cohort LTV and LTV:CAC (`cohort_metrics_long`, part 2 of 2)
+
+The same table as diagram 2. LTV stops at month 23, so the last value is the 24-month figure. A cohort with no cost rows has no CAC and drops out of the ratio.
+
+```mermaid
+graph TD
+    panel[("customer_month_panel.csv")]
+    cost[("cost_per_customer.csv")]
+    stg_revenue["Clean copy of the panel<br/>stg_revenue"]
+    stg_cost["Clean copy of the <br>cost file<br/>stg_cost"]
+    int_avg_mrr["Average MRR per customer,<br> by cohort and month<br/>int_avg_mrr"]
+    int_cumulative_ltv["Running total of average MRR,<br> months 0 to 23<br/>int_cumulative_ltv"]
+    int_cohort_cac_summary["CAC per customer,<br> by cohort<br/>int_cohort_cac_summary"]
+    int_ltv_cac_ratio["LTV divided by CAC<br/>int_ltv_cac_ratio"]
+    cohort_metrics_long["Cohort table (long form)<br/>cohort_metrics_long"]
+    csv(["csv_exports/reporting/<br/>cohort_metrics_long.csv"])
+
+    panel --> stg_revenue
+    cost --> stg_cost
+    stg_revenue --> int_avg_mrr
+    int_avg_mrr --> int_cumulative_ltv
+    stg_cost --> int_cohort_cac_summary
+    int_cumulative_ltv --> int_ltv_cac_ratio
+    int_cohort_cac_summary --> int_ltv_cac_ratio
+    int_avg_mrr -->|"avg_mrr"| cohort_metrics_long
+    int_cumulative_ltv -->|"cumulative_ltv"| cohort_metrics_long
+    int_ltv_cac_ratio -->|"ltv_cac_ratio"| cohort_metrics_long
+    cohort_metrics_long --> csv
+
+    classDef file fill:#777777,stroke:#888888,color:#000000
+    classDef target fill:#1F4E79,stroke:#2471a3,stroke-width:2px,color:#ffffff
+    class panel,cost,csv file
+    class cohort_metrics_long target
+```
+[Back to top](#where-each-dashboard-table-comes-from-dbt_to_exports-v5a)
+
+---
+
+## 4. Unit economics and CAC (three tables)
+
+`unit_economics_grid` has one row per channel and plan tier. `unit_economics_by_cohort` is the same grid with the cohort month kept. `cac_per_customer_by_channel` is CAC per cohort and channel.
+
+```mermaid
+graph TD
+    panel[("customer_month_panel.csv")]
+    cost[("cost_per_customer.csv")]
+    stg_revenue["Clean copy of the panel<br/>stg_revenue"]
+    stg_cost["Clean copy of the cost file<br/>stg_cost"]
+    int_customer_clv_24m["One row per customer, with 24-month CLV<br/>int_customer_clv_24m"]
+    int_unit_economics["Average CLV and CAC,<br> by channel and plan tier<br/>int_unit_economics"]
+    unit_economics_grid["unit_economics_grid"]
+    unit_economics_by_cohort["unit_economics_by_cohort"]
+    cac_per_customer_by_channel["cac_per_customer_by_channel"]
+    csv(["csv_exports/reporting<br/>unit_economics_grid.csv<br/<br>unit_economics_by_cohort.csv<br>cac_per_customer_by_channel.csv"])
+
+    panel --> stg_revenue
+    cost --> stg_cost
+    stg_revenue --> int_customer_clv_24m
+    int_customer_clv_24m --> int_unit_economics
+    int_unit_economics --> unit_economics_grid
+    int_customer_clv_24m --> unit_economics_by_cohort
+    stg_cost --> cac_per_customer_by_channel
+    unit_economics_grid --> csv
+    unit_economics_by_cohort --> csv
+    cac_per_customer_by_channel --> csv
+
+    classDef file fill:#777777,stroke:#888888,color:#000000
+    classDef target fill:#1F4E79,stroke:#2471a3,stroke-width:2px,color:#ffffff
+    classDef newv5a fill:#7F9388,stroke:#1e8449,stroke-width:2px,color:#000000
+    class panel,cost,csv file
+    class unit_economics_grid target
+    class unit_economics_by_cohort,cac_per_customer_by_channel newv5a
+```
+[Back to top](#where-each-dashboard-table-comes-from-dbt_to_exports-v5a)
+
+---
+
+## 5. MRR and ARR movements (`mrr_movements_long`, `arr_movements_long`)
+
+The four purple tables are the wide customer-by-month tables. Each customer gets a row for every calendar month, with zero MRR for missing months. The movements tables then label each month as New Business, Expansion, Contraction, Churn or No Change.
+
+The "every customer x every month" box is built from two small models, `int_customer_attributes` and `int_calendar_months`. Both read `stg_revenue`.
+
+```mermaid
+graph TD
+    panel[("customer_month_panel.csv")]
+    stg_revenue["Clean copy of the panel<br/>stg_revenue"]
+    int_customer_clv_24m["One row per customer, with 24-month CLV<br/>int_customer_clv_24m"]
+    int_customer_calendar_spine["Every customer x every month<br/>int_customer_calendar_spine"]
+    reindexed_panel_audit_mrr["Full grid (wide),<br> zero MRR for missing months<br/>reindexed_panel_audit_mrr"]
+    reindexed_panel_audit_arr["Same grid but ARR (MRR x 12)<br/>reindexed_panel_audit_arr"]
+    customer_level_movements_mrr["Last month's<br> and a movement label<br/>customer_level_movements_mrr"]
+    customer_level_movements_arr["Adds last month's  ARR<br/>customer_level_movements_arr"]
+    mrr_movements_long["MRR movements by month<br/>mrr_movements_long"]
+    arr_movements_long["ARR movements by month<br/>arr_movements_long"]
+    csv(["csv_exports/reporting/<br/>mrr_movements_long.csv<br/>arr_movements_long.csv"])
+
+    panel --> stg_revenue
+    stg_revenue --> int_customer_clv_24m
+    stg_revenue -->|"via two small models"| int_customer_calendar_spine
+    int_customer_calendar_spine --> reindexed_panel_audit_mrr
+    stg_revenue -->|"actual MRR"| reindexed_panel_audit_mrr
+    int_customer_clv_24m -->|"CLV and CAC columns"| reindexed_panel_audit_mrr
+    reindexed_panel_audit_mrr --> reindexed_panel_audit_arr
+    reindexed_panel_audit_mrr --> customer_level_movements_mrr
+    reindexed_panel_audit_arr --> customer_level_movements_arr
+    customer_level_movements_mrr --> mrr_movements_long
+    customer_level_movements_arr --> arr_movements_long
+    mrr_movements_long --> csv
+    arr_movements_long --> csv
+
+    classDef file fill:#777777,stroke:#888888,color:#000000
+    classDef stored fill:#6C3483,stroke:#4a235a,stroke-width:2px,color:#ffffff
+    classDef target fill:#1F4E79,stroke:#2471a3,stroke-width:2px,color:#ffffff
+    class panel,csv file
+    class reindexed_panel_audit_mrr,reindexed_panel_audit_arr,customer_level_movements_mrr,customer_level_movements_arr stored
+    class mrr_movements_long,arr_movements_long target
+```
+[Back to top](#where-each-dashboard-table-comes-from-dbt_to_exports-v5a)
+
+---
+
+## 6. Monthly metrics and KPI cards (`monthly_metrics_long`, `arr_by_month`, `kpi_summary`)
+
+One table of monthly metrics feeds the other two. The purple box is the movements table from diagram 5.
+
+```mermaid
+graph TD
+    stg_revenue["Clean copy of the panel<br/>stg_revenue"]
+    customer_level_movements_mrr["Movements table (see diagram 5)<br/>customer_level_movements_mrr"]
+    arpu_by_month["Revenue per customer<br/>arpu_by_month"]
+    churn_rate_by_month["Share of customers lost<br/>churn_rate_by_month"]
+    customer_counts_by_month["Active, new and churned customers<br/>customer_counts_by_month"]
+    revenue_churn_rate_by_month["Share of MRR lost<br/>revenue_churn_rate_by_month"]
+    monthly_metrics_long["Monthly metrics (long form)<br/>monthly_metrics_long"]
+    arr_by_month["ARR by month<br/>arr_by_month"]
+    kpi_summary["KPI cards: current vs previous month<br/>kpi_summary"]
+    csv(["csv_exports/reporting/<br/>monthly_metrics_long.csv<br/>arr_by_month.csv<br/>kpi_summary.csv"])
+
+    stg_revenue --> arpu_by_month
+    stg_revenue --> churn_rate_by_month
+    stg_revenue --> revenue_churn_rate_by_month
+    customer_level_movements_mrr --> customer_counts_by_month
+    customer_level_movements_mrr --> revenue_churn_rate_by_month
+    stg_revenue -->|"total_mrr"| monthly_metrics_long
+    arpu_by_month -->|"arpu"| monthly_metrics_long
+    churn_rate_by_month -->|"logo_churn_rate_pct"| monthly_metrics_long
+    customer_counts_by_month -->|"active, new and churned customers"| monthly_metrics_long
+    revenue_churn_rate_by_month -->|"revenue_churn_rate_pct"| monthly_metrics_long
+    monthly_metrics_long --> arr_by_month
+    monthly_metrics_long --> kpi_summary
+    monthly_metrics_long --> csv
+    arr_by_month --> csv
+    kpi_summary --> csv
+
+    classDef file fill:#777777,stroke:#888888,color:#000000
+    classDef stored fill:#6C3483,stroke:#4a235a,stroke-width:2px,color:#ffffff
+    classDef target fill:#1F4E79,stroke:#2471a3,stroke-width:2px,color:#ffffff
+    class csv file
+    class customer_level_movements_mrr stored
+    class monthly_metrics_long,arr_by_month,kpi_summary target
+```
+[Back to top](#where-each-dashboard-table-comes-from-dbt_to_exports-v5a)
