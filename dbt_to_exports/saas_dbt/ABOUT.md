@@ -252,11 +252,3 @@ tables, and their output columns were checked against
 `build_dashboard_from_marts.py`. Run `dbt build` once on the sample files,
 then on the full files, before relying on the numbers.
 
-### Change history
-See the `docs/` folder for a record of what changed at each step, and how
-to reverse each change if needed. Files are named
-`edits_v1_to_v2.txt`, `edits_v2_to_v3.txt`, and so on.
-`edits_clv_24m.txt` covers the move to 24-month CLV.
-`edits_v4_to_v5.txt` covers the removal of the Tableau folder.
-`edits_v5_to_v5a.txt` covers the two new reporting marts, the new test, and
-the export lines for both.
