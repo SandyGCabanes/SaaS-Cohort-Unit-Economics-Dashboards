@@ -1,4 +1,4 @@
-# dbt_from_raw_csv
+# dbt_from_raw_csv  README.md
 
 ## Situation
 Two raw systems feed the SaaS reporting layer: Stripe (billing) and four marketing
@@ -9,7 +9,8 @@ then exports each mart to CSV for hand-off:
 - `cost_per_customer` (cohort_month x channel x plan_tier grain, CAC and mix)
 
 It replaces `dbt_from_raw_duckdb`. That version needed two hand-built `.duckdb`
-files before dbt could start. This one does not.
+files before dbt could start. Instead of the hand-built duckdb files, this version
+just uses the csv files themselves.
 
 ## Raw data
 The raw CSVs live in two folders. A folder stands in for a bucket (S3 / GCS / Azure).
@@ -19,10 +20,10 @@ The raw CSVs live in two folders. A folder stands in for a bucket (S3 / GCS / Az
 | `raw/stripe_outputs` (`raw_stripe_dir`) | `stripe_customers`, `stripe_subscriptions`, `stripe_invoices`, `stripe_invoice_line_items`, `stripe_balance_transactions` |
 | `raw/marketing_outputs` (`raw_marketing_dir`) | `facebook_ads`, `google_ads`, `hubspot_organic_downloads`, `rewardful_referrals` |
 
-This zip ships the four marketing files in full and a 49-customer excerpt of each
+The two folders contain four marketing files in full and a 49-customer excerpt of each
 Stripe file, so `dbt build` runs out of the box on a small sample.
-To run on the real data, copy the full Stripe CSVs over the excerpts in
-`raw/stripe_outputs/`. No code changes.
+To run on the real data, you will need the full Stripe CSVs over the excerpts in
+`raw/stripe_outputs/`. The full tables can be shown later.
 
 ## How the CSVs are read
 `macros/raw_csv.sql` wraps DuckDB's `read_csv`. Every column is read as text, so
@@ -35,7 +36,7 @@ Each mart exports itself to `exports/` through a `post_hook` (`macros/export_to_
 exports/customer_month_panel.csv
 exports/cost_per_customer.csv
 ```
-`exports/` is not touched by `dbt clean`. In the story, a person (or an orchestrator
+`exports/` is not touched by `dbt clean`. In this scenario, a person (or an orchestrator
 in a real company) moves these two files to the bucket that `dbt_to_exports` reads.
 The bucket itself is simulated by a local folder.
 
