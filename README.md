@@ -13,10 +13,12 @@ My deliverables are:
 
 In this repo, the operating data are [simulated](source/dataset_generation).  Since SaaS data are usually confidential, this is a deliberate **proxy for a real-world scenario.**
 
-In short, this project is a full end-to-end system, with **two-simulation paths:**
+Net, this project is a full end-to-end system, with **two-simulation paths:**
 
-- **Downstream:** [data generation (ground truth)](source/dataset_generation) -> [validation](source/validation) -> [visualization](docs/index.html). The monthly patterns, builds and constants for the data-generating process are explicitly defined to represent the behavior of a SaaS business with three channels and three plan tiers.
-- **Upstream:**  [data generation (ground truth)](source/dataset_generation) -> [disaggregation](source/disaggregation) -> [dbt from raw csv](https://github.com/SandyGCabanes/SaaS-Cohort-Unit-Economics-Dashboards/tree/main/dbt_from_raw_csv) -> [dbt to export](https://github.com/SandyGCabanes/SaaS-Cohort-Unit-Economics-Dashboards/tree/main/dbt_to_exports/saas_dbt). The previously generated ***ground truth customer and cost data*** are further disaggregated into simulated third-party source-system extracts (CSVs) to resemble files that require processing through the dbt pipeline.
+- **Downstream:** [data generation (ground truth)](source/dataset_generation) -> [validation](source/validation) -> [visualization](docs/index.html). Starting from expected kpi values for a SaaS business with three channels and three plan tiers, the monthly patterns, builds and constants for the data-generating process are explicitly defined.
+- **Upstream:**  [data generation (ground truth)](source/dataset_generation) -> [disaggregation](source/disaggregation) -> [dbt from raw csv](https://github.com/SandyGCabanes/SaaS-Cohort-Unit-Economics-Dashboards/tree/main/dbt_from_raw_csv) -> [dbt to export](https://github.com/SandyGCabanes/SaaS-Cohort-Unit-Economics-Dashboards/tree/main/dbt_to_exports/saas_dbt).
+	- `dbt_from_raw_csv`: The previously generated ***ground truth customer and cost data*** are further disaggregated into simulated third-party source-system extracts (CSVs) to resemble files that require processing through the dbt pipeline.
+   	- `dbt_to_exports`: Picks up from the `dbt_from_raw_csv` and produces long table for dashboard use.
 
 Please see the [overall_project_diagram.md](https://github.com/SandyGCabanes/SaaS-Cohort-Unit-Economics-DBT-to-Dashboards/blob/main/overall_project_diagram.md) for this project.  
 
