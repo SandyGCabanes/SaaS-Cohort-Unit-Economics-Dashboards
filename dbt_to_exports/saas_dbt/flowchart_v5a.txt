@@ -23,7 +23,7 @@ fct_revenue, fct_cost   (source tables in saas_reporting.duckdb)
 +----------------------------------------------------------------+
 | models/marts/                                                  |
 |                                                                |
-|   unit_economics_grid.sql   <- shared, sits at marts/ root     |
+|   unit_economics_grid.sql   <- shared, located in marts/ root  |
 |                                                                |
 |   +--------------------------------------------------------+   |
 |   | marts/reporting/                                       |   |
@@ -45,9 +45,9 @@ CLV and LTV figures cover lifetime months 0 to 23 only (24-month CLV).
 
 Separately, off to the side:
 
-saas_validation_v5d.ipynb (notebook)
+saas_validation_v5d.ipynb (see source/validation notebook)
       |
       v
-Independent check: does a `dbt run` against the same
-CSV batch produce the same numbers the notebook does?
+Independent check: `dbt run` against the same
+CSV batch should produce the same numbers the notebook does
 ```
