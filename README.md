@@ -164,7 +164,7 @@ CAC per new customer rose from $432 (Dec 2023 cohort) to $450 (Dec 2024) to $488
 
 ## 5. Next Steps Before the Pitch
 
-This analysis was built from product and billing data: MRR, CAC, customer counts. The following are a few things investors will ask for. These are **beyond the scope of this dataset,** e.g., in the finance/accounting system.  
+This analysis was built from product and billing data: MRR, CAC, customer counts. The following are a few things investors will ask for. These are **beyond the scope of this dataset,** e.g., available only in the finance/accounting system.  
 These can be evaluated separately by a **Financial Analyst.**
 
 - **Gross margin.** Series A investors expect gross margin above 70%. We will need hosting, support, and COGS figures layered on top of the revenue numbers.
@@ -182,7 +182,7 @@ These can be evaluated separately by a **Financial Analyst.**
 - [SaaS Metrics Calculator](https://saasmetricscalculator.com/saas-benchmarks-by-arr-tier), *SaaS Benchmarks by ARR Tier 2026*
 			 
 
-> **A note on the data.** This dashboard runs on a business simulation dataset built for demonstration purposes, to represent real transactions. This summary shows how a Data Analyst would evaluate VC funding readiness using this KPI set. The conclusion is a simulated recommendation before pitching to investors. 
+> **A note on the data.** This summary shows how a Data Analyst would evaluate VC funding readiness using this KPI set. The conclusion is a simulated recommendation before pitching to investors. 
 
 > ### Deliberate design choices and limitations of the [disaggregation simulation code](source/disaggregation)
 
