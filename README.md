@@ -192,3 +192,5 @@ These can be evaluated separately by a **Financial Analyst.**
 > - CAC by plan tier is an allocation. 
 > - Disaggregated data are smoother than real data. Channel splits are assumed.
 > - These were all deliberate design choices to limit "scope creep".
+>
+![Views](https://gitviews.com/user/SandyGCabanes.svg?style=modern&label=ReadMe%20Views)
