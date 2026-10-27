@@ -4,16 +4,16 @@
 Two raw systems feed the SaaS reporting layer: Stripe (billing) and four marketing
 channel exports (Facebook Ads, Google Ads, HubSpot organic, Rewardful referrals).
 This project reads their CSV extracts directly, transforms them into two marts,
-then exports each mart to CSV for hand-off:
+then exports each mart to CSV for hand-off to the python notebook:
 - `customer_month_panel` (customer x month grain, MRR, 24-month CLV, CAC)
 - `cost_per_customer` (cohort_month x channel x plan_tier grain, CAC and mix)
 
-It replaces `dbt_from_raw_duckdb`. That version needed two hand-built `.duckdb`
-files before dbt could start. Instead of the hand-built duckdb files, this version
-just uses the csv files themselves.
+It replaces `dbt_from_raw_duckdb`  ( a previous version). That version needed 
+two hand-built `.duckdb` files before dbt could start. Instead of the hand-built duckdb files, 
+this version just uses the csv files themselves.
 
 ## Raw data
-The raw CSVs live in two folders. A folder stands in for a bucket (S3 / GCS / Azure).
+The raw CSVs are uploaded in two folders. A folder stands in for a bucket (S3 / GCS / Azure).
 
 | Folder (var in `dbt_project.yml`) | Files |
 |---|---|
@@ -23,15 +23,15 @@ The raw CSVs live in two folders. A folder stands in for a bucket (S3 / GCS / Az
 The two folders contain four marketing files in full and a 49-customer excerpt of each
 Stripe file, so `dbt build` runs out of the box on a small sample.
 To run on the real data, you will need the full Stripe CSVs over the excerpts in
-`raw/stripe_outputs/`. The full tables can be shown later.
+`raw/stripe_outputs/`.  The full tables are available from the author.
 
 ## How the CSVs are read
 `macros/raw_csv.sql` wraps DuckDB's `read_csv`. Every column is read as text, so
-DuckDB never guesses a type. Each staging model then casts the columns it uses.
+DuckDB does not need to guess a data type. Each staging model then casts the columns it uses.
 Examples: `cast(amount_paid as bigint) / 100.0`, `cast(nullif(canceled_at, '') as date)`.
 
 ## Storage of CSV outputs
-Each mart exports itself to `exports/` through a `post_hook` (`macros/export_to_csv.sql`):
+Each mart is exported to `exports/` through a `post_hook` (`macros/export_to_csv.sql`):
 ```
 exports/customer_month_panel.csv
 exports/cost_per_customer.csv
@@ -73,15 +73,16 @@ every customer is measured over the same window.
 
 ## Checks run while building (on the shipped sample)
 - All 49 sample Stripe customers match exactly one marketing row.
-- No marketing `customer_id` appears twice (64,941 rows across the four files).
-- All 2,326 sample invoices are `paid`, with no customer billed twice in one month. The panel should therefore have 2,326 rows from the sample.
+- All marketing `customer_id` values are unique (64,941 rows across the four files).
+- All 2,326 sample invoices are `paid`, with no customer billed twice in one month. 
 - 25 subscriptions are active (blank `canceled_at`) and 24 are canceled.
 
 ## Checks on the 24-month CLV cap
 `dbt build` passes on the shipped sample (46 of 46). Two data tests guard the cap:
 `assert_clv_24m_is_capped` and `assert_panel_values_fixed_per_customer`.
-The panel was also matched against saas_dataset_v9 samples: 100 of 100 rows from the first-100 sample
-and 3,817 of 3,817 rows from the random 100-customer sample (83 mature, 17 immature customers),
+The panel was also matched against a saas_dataset_v9 sample (provided separately) : 
+100 of 100 rows from the first-100 sample and 3,817 of 3,817 rows from the 
+random 100-customer sample (83 mature, 17 immature customers),
 with no mismatches in any column.
 
 ## Setup note
