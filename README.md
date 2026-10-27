@@ -178,7 +178,6 @@ These can be evaluated separately by a **Financial Analyst.**
 - [Livmo](https://livmo.com/blog/saas-churn-benchmarks-valuation/), *SaaS Churn Benchmarks 2026*
 - [SaaSHero](https://www.saashero.net/strategy/b2b-saas-ltv-cac-benchmarks/), *Best LTV to CAC Ratio Benchmarks for B2B SaaS in 2026*
 - [DigitalApplied](https://www.digitalapplied.com/blog/saas-unit-economics-2026-cac-ltv-payback-reference), *SaaS Unit Economics 2026: CAC, LTV & Payback Reference* (citing Benchmarkit 2025 data)
-- [Angel Investors Network](https://angelinvestorsnetwork.com/venture-capital/series-a-funding-requirements-2026), *Series A Funding Requirements 2026*
 - [Aleph × Benchmarkit](https://www.getaleph.com/answers/rule-of-40-saas-2026), *2026 SaaS & AI Performance Benchmarks* (Rule of 40)
 - [SaaS Metrics Calculator](https://saasmetricscalculator.com/saas-benchmarks-by-arr-tier), *SaaS Benchmarks by ARR Tier 2026*
 			 
