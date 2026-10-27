@@ -16,6 +16,6 @@ flowchart TD
     disaggregate --> dbt1
     dbt1 --> upload --> dbt2 --> endnode
 
-    python -. "metrics off" .-> start
-    dashboards -. "metrics off" .-> start
+    python -. "metrics are off" .-> start
+    dashboards -. "metrics are off" .-> start
 ```
