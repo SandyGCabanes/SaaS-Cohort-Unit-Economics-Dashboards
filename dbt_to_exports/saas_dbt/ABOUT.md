@@ -1,35 +1,39 @@
 # SaaS Reporting Analytics dbt Project
 
 ## Problem
-The dashboard was successfully delivered to the client, complete with
-business-actionable recommendations. The analysis was done using a 
-Python notebook that loaded staging data from the dbt_from_raw models. 
-This was a precursor before building the actual dashboard.
-The notebook read two CSV files: a revenue export (`customer_month_panel`) 
-and a cost export (`cost_per_customer`), stored in an accessible folder.  
-The notebook calculated standard SaaS metrics such as MRR, churn, retention, 
-and customer lifetime value.
-
-But the notebook requires reshaping csv files in order to build html plotly 
-dashboards or use BI tools like Tableau, or even excel pivot tables.
-**Intermediate dataframes** are created upon running, and even **stored as helper_dfs.** 
-This is fine for a one-off project, but not advisable for handoff. 
+The dashboard used a Python notebook that loaded `staging data` from the dbt_from_raw models.
+While good enough, different business logic cut-offs such as CLV may be used by different users.
 There needs to be a common source for all analysts in the future, so that 
 definitions are consistent across.
 
+The notebook read two CSV aggregated (staging) files : a revenue export (`customer_month_panel`) 
+and a cost export (`cost_per_customer`), stored in an accessible folder.  It calculated standard SaaS metrics 
+such as MRR, churn, retention, and CLV.  
+
+But the notebook requires reshaping csv files in order to build html plotly 
+dashboards or use BI tools like Tableau, or even excel pivot tables.
+**Intermediate dataframes** are created upon running, and **stored as helper_dfs.** 
+This is fine for a one-off project, but not advisable for hand-off. 
+This one-off set-up does not provide a common table of kpis for future analysts.
+
 ## Solution
-This project rebuilds the notebook's re-shaping logic as a dbt project. Now this dbt 
+This added project rebuilds the notebook's re-shaping logic as a dbt project. 
+It picks up where `dbt_from_raw` stops.  Now this dbt 
 can turn raw database tables into clean, tested, documented tables using
 SQL. Two CSV files feed the project: `customer_month_panel.csv` and
 `cost_per_customer.csv`. dbt reads them from the landing zone folder and
-names them `fct_revenue` and `fct_cost`. The project produces a full set of SaaS
-metrics tables in a single database file `saas_reporting.duckdb`. It also
-exports CSVs for pickup by reporting BI tools, or even excel.
+names them `fct_revenue` and `fct_cost`. This dbt model produces a full set of SaaS
+metrics as CSV exports for pickup by reporting BI tools, or even excel.
+There is also a single database file `saas_reporting.duckdb`. 
 
-This dbt project produces one set of output tables, in long form. One row holds
+This dbt project produces several output tables, one in long form. One row holds
 one value, and a `metric_name` column says which metric it is. The Python
 reporting engine, HTML dashboards, Tableau and Excel can all read the same
 tables, with minimal reshaping.
+
+The goal of this project is to simulate what happens when staging tables
+are provided in the cloud, and how data engineering transformations using
+business logic can enable any team to use the same pre-calculated kpis.
 
 ## Benefits
 - One database `saas_reporting.duckdb` file holds every metric. No more scattered
