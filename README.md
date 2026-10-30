@@ -5,11 +5,8 @@ Imagine this business scenario.  I am a Data Analyst at a SaaS startup.  My resp
 
 My deliverables are:
 - the [Analyst's Report](#analysts-report), which discusses VC funding readiness based on available data, and
-- the SaaS Dashboards
-	- [2022-2023](https://sandygcabanes.github.io/SaaS-Cohort-Unit-Economics-Dashboards/saas_dashboard_2022-2023.html#revenue)
-	- [2023-2024](https://sandygcabanes.github.io/SaaS-Cohort-Unit-Economics-Dashboards/saas_dashboard_2023-2024.html#revenue)
-	- [2024-2025](https://sandygcabanes.github.io/SaaS-Cohort-Unit-Economics-Dashboards/)
-	 
+- the [SaaS Dashboards](https://sandygcabanes.github.io/SaaS-Cohort-Unit-Economics-Dashboards/)
+ 
 
 In this repo, the operating data are [simulated](source/dataset_generation).  Since SaaS data are usually confidential, this is a deliberate **proxy for a real-world scenario.**
 
